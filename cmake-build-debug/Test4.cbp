@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="Test4"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\UOCV\;CMake Files\UOCV\build\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="Test4">
+				<Option output="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Test4.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="C:/UOCV/build"/>
+					<Add directory="C:/UOCV/include"/>
+					<Add directory="C:/UOCV/include/opencv"/>
+					<Add directory="C:/UOCV/modules/core/include"/>
+					<Add directory="C:/UOCV/modules/flann/include"/>
+					<Add directory="C:/UOCV/modules/imgproc/include"/>
+					<Add directory="C:/UOCV/modules/ml/include"/>
+					<Add directory="C:/UOCV/modules/objdetect/include"/>
+					<Add directory="C:/UOCV/modules/photo/include"/>
+					<Add directory="C:/UOCV/modules/video/include"/>
+					<Add directory="C:/UOCV/modules/imgcodecs/include"/>
+					<Add directory="C:/UOCV/modules/shape/include"/>
+					<Add directory="C:/UOCV/modules/videoio/include"/>
+					<Add directory="C:/UOCV/modules/highgui/include"/>
+					<Add directory="C:/UOCV/modules/superres/include"/>
+					<Add directory="C:/UOCV/modules/ts/include"/>
+					<Add directory="C:/UOCV/modules/features2d/include"/>
+					<Add directory="C:/UOCV/modules/calib3d/include"/>
+					<Add directory="C:/UOCV/modules/stitching/include"/>
+					<Add directory="C:/UOCV/modules/videostab/include"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include/c++"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include/c++/mingw32"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include/c++/backward"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/../../../../include"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include-fixed"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/../../../../mingw32/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 Test4"/>
+					<CompileFile command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="Test4/fast">
+				<Option output="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Test4.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="C:/UOCV/build"/>
+					<Add directory="C:/UOCV/include"/>
+					<Add directory="C:/UOCV/include/opencv"/>
+					<Add directory="C:/UOCV/modules/core/include"/>
+					<Add directory="C:/UOCV/modules/flann/include"/>
+					<Add directory="C:/UOCV/modules/imgproc/include"/>
+					<Add directory="C:/UOCV/modules/ml/include"/>
+					<Add directory="C:/UOCV/modules/objdetect/include"/>
+					<Add directory="C:/UOCV/modules/photo/include"/>
+					<Add directory="C:/UOCV/modules/video/include"/>
+					<Add directory="C:/UOCV/modules/imgcodecs/include"/>
+					<Add directory="C:/UOCV/modules/shape/include"/>
+					<Add directory="C:/UOCV/modules/videoio/include"/>
+					<Add directory="C:/UOCV/modules/highgui/include"/>
+					<Add directory="C:/UOCV/modules/superres/include"/>
+					<Add directory="C:/UOCV/modules/ts/include"/>
+					<Add directory="C:/UOCV/modules/features2d/include"/>
+					<Add directory="C:/UOCV/modules/calib3d/include"/>
+					<Add directory="C:/UOCV/modules/stitching/include"/>
+					<Add directory="C:/UOCV/modules/videostab/include"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include/c++"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include/c++/mingw32"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include/c++/backward"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/../../../../include"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/include-fixed"/>
+					<Add directory="c:\mingw\bin\../lib/gcc/mingw32/5.3.0/../../../../mingw32/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 Test4/fast"/>
+					<CompileFile command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/MinGW/bin/mingw32-make.exe -f &quot;D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/main.cpp">
+			<Option target="Test4"/>
+		</Unit>
+		<Unit filename="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/UOCV/build/OpenCVConfig-version.cmake">
+			<Option virtualFolder="CMake Files\UOCV\build\"/>
+		</Unit>
+		<Unit filename="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/UOCV/build/OpenCVConfig.cmake">
+			<Option virtualFolder="CMake Files\UOCV\build\"/>
+		</Unit>
+		<Unit filename="D:/Dokumentumok/MscI_offline/Clion__PROJECTS/Test4/UOCV/build/OpenCVModules.cmake">
+			<Option virtualFolder="CMake Files\UOCV\build\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
