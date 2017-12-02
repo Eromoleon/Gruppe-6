@@ -325,13 +325,12 @@ Mat correct(Mat src) {
     for(size_t i = 0; i<segments.size();i++){
         angles.push_back(int(segments[i][4]));
     }
-    int angleTolerance = 3;
-    vector<int> angleHist = histogram(angles,angleTolerance);
+    float angleTolerance = 3;
+
+    vector<int> angleHist = histogram(angles,int(angleTolerance));
     drawHistogram(angleHist);
 
-
-
-    //Calculate average:
+    // Calculate the average frequency of any angle:
     double sum = 0;
     double noNonZero  = 0;
     for(size_t i = 0;i<angleHist.size(); i++){
@@ -346,14 +345,43 @@ Mat correct(Mat src) {
     }
 
     sum = 0;
+    vector<Vec6f> significantSegments;
     for(size_t i = 0;i<angleHist.size(); i++) {
         if(angleHist[i]>int(average)){
-           int angle =  angleTolerance*i-angleTolerance/2; // we get the angle that is in the middle of the range
+           float angle =  angleTolerance*(i+1)-angleTolerance/2; // we get the angle that is in the middle of the range
             cout<<"Possibly statistically significant angles: "<<angle<<endl;
+            Vec6f segment ;
+            segment[4] = angle;
+            significantSegments.push_back(segment);
         }
     }
-    // Now this should be weighted with the lenght of the lines that the angles belong to
+    // working so far...
 
+    // Arranging everything into groups based on their angles:
+    vector<vector<Vec6f>>groups;
+    groups.resize(significantSegments.size());
+    for(size_t i = 0;i<segments.size(); i++){
+        float ang = segments[i][4];
+        //cout <<endl<<"angle to examine: "<< ang<<endl;
+        for(size_t j = 0;j< significantSegments.size(); j++){
+            float significantAngle =  significantSegments[j][4];
+           // cout <<endl<<"significant angle to compare with: "<< significantAngle<<endl;
+            if( significantAngle-angleTolerance/2 < ang && ang <=significantAngle+angleTolerance/2) {
+               // cout<<"angle "<< ang <<"added to group: "<< j<<endl;
+                groups[j].push_back(segments[i]);
+            }
+
+        }
+    }
+
+    for(size_t i = 0;i<groups.size(); i++){
+        cout<<endl<< "Group"<< i<<": "<<endl;
+        for(size_t j = 0;j<groups[i].size(); j++){
+            cout<< "angle = "<<groups[i][j][4]<<endl;
+        }
+
+    }
+    // Now this should be weighted with the lenght of the lines that the angles belong to
     // find significant lines, then find right angles between these lines (corners)
     imshow("lines",lineImage);
     waitKey(0);
