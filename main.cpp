@@ -368,6 +368,7 @@ Mat correct(Mat src) {
            // cout <<endl<<"significant angle to compare with: "<< significantAngle<<endl;
             if( significantAngle-angleTolerance/2 < ang && ang <=significantAngle+angleTolerance/2) {
                // cout<<"angle "<< ang <<"added to group: "<< j<<endl;
+
                 groups[j].push_back(segments[i]);
             }
 
