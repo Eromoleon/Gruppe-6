@@ -30,6 +30,7 @@ typedef std::vector<std::vector<Point>> Contour_t;
 typedef std::vector<Vec4i> Hierarchy_t; //hierarchy object is needed for drawContours apparently
 
 class SolutionElement
+
 {
 public:
     SolutionElement(): index(-1), orientation(-1){}
