@@ -70,10 +70,14 @@ Mat segment(Mat);
 Mat correct(Mat);
 Mat processRawImage(int fileIndex = 0);
 Mat resultImage();
-Contour_t getLongestContour(Mat); // might become soon depracated
+Contour_t getLongestContour(Mat); //  depracated
 int getLongestContourIndex(Contour_t);
 
 int findmax(std::vector<int> vals);
+int findmin(std::vector<int> vals);
+float findmax(std::vector<float> vals);
+float findmin(std::vector<float> vals);
+
 std::vector<int> histogram(std::vector<int> data, int rangeWidth); // discrete histogram
 std::vector<int> cont_histogram(std::vector<int> data);
 void drawHistogram(vector<int> hist);
@@ -278,7 +282,7 @@ Mat correct(Mat src) {
 
     //## Done rotating the image using minimum area rectangle
 
-    // ##Find the angle of all line segments and create a histogram, then decide the orientation based on that
+    // ##Find the angle of all line segments and create a histogram, then decide the orientation based on the histogram data
 
 
     std::vector<Vec4i> lines;
@@ -301,8 +305,16 @@ Mat correct(Mat src) {
         Point first = Point(lines[i][0], lines[i][1]);
         Point second = Point(lines[i][2], lines[i][3]);
         Point segment = second-first;
-        double length = sqrt((segment.x)^2+(segment.y)^2);
-        int theta = int(std::round((90+(180/CV_PI)*atan2(segment.y,segment.x)))); // angle between 0 and 180 degs
+        float length = float(sqrt((segment.x)*(segment.x)+(segment.y)*(segment.y)));
+        //cout<<"length calculated: "<<length<<endl;
+
+        float rawAngle = float(90+(180/CV_PI)*atan2(segment.y,segment.x)); // angle between 0 and 180 degs
+
+
+        int theta = int(std::round(rawAngle)); // angle between 0 and 90°
+
+
+        //angles should range from 0-90°
         //cout<<"theta: "<<theta<<endl;
         for(int j = 0; j< 4; j++){
             lineObject[j] = (lines[i][j]);
@@ -311,13 +323,14 @@ Mat correct(Mat src) {
         lineObject[5] = float(length);
         segments.push_back(lineObject);
         // At this point we have a lineObject that contains x0, y0, x1, y1, the length and angle of a line
-        if(length < 10){
+        if(length < 30){
             // Blue:
             line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(244,100,0), 1, 1 );
         }
         else{
-            // Yellow:
-            line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(0,255,255), 1, 1 );
+            // Blue:
+            line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(244,100,0), 1, 1 );
+            //line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(0,255,255), 1, 1 );
         }
     }
 
@@ -325,10 +338,10 @@ Mat correct(Mat src) {
     for(size_t i = 0; i<segments.size();i++){
         angles.push_back(int(segments[i][4]));
     }
-    float angleTolerance = 3;
+    float angleTolerance = 5;
 
     vector<int> angleHist = histogram(angles,int(angleTolerance));
-    drawHistogram(angleHist);
+    // drawHistogram(angleHist);
 
     // Calculate the average frequency of any angle:
     double sum = 0;
@@ -348,9 +361,11 @@ Mat correct(Mat src) {
     vector<Vec6f> significantSegments;
     for(size_t i = 0;i<angleHist.size(); i++) {
         if(angleHist[i]>int(average)){
-           float angle =  angleTolerance*(i+1)-angleTolerance/2; // we get the angle that is in the middle of the range
-            cout<<"Possibly statistically significant angles: "<<angle<<endl;
+            float angle =  angleTolerance*(i+1)-angleTolerance/2; // we get the angle that is in the middle of the range
+            //cout<<"Possibly statistically significant angles: "<<angle<<endl;
             Vec6f segment ;
+
+
             segment[4] = angle;
             significantSegments.push_back(segment);
         }
@@ -367,22 +382,129 @@ Mat correct(Mat src) {
             float significantAngle =  significantSegments[j][4];
            // cout <<endl<<"significant angle to compare with: "<< significantAngle<<endl;
             if( significantAngle-angleTolerance/2 < ang && ang <=significantAngle+angleTolerance/2) {
-               // cout<<"angle "<< ang <<"added to group: "<< j<<endl;
+              // cout<<"length "<< segments[i][5] <<endl;
 
-                groups[j].push_back(segments[i]);
+                groups[j].push_back(segments[i]); // Sorting every statistically singnificant segment into a group
             }
 
         }
     }
-
+    vector<Vec6f> averageSegments;
+    vector<float> lengths;
     for(size_t i = 0;i<groups.size(); i++){
         cout<<endl<< "Group"<< i<<": "<<endl;
+        float length_sum = 0;
+        float angle_sum = 0;
+        float angle_avg = 0;
+        float angle_divider = 0;
+        float x0_sum = 0;
+        float y0_sum = 0;
+        float x1_sum = 0;
+        float y1_sum = 0;
         for(size_t j = 0;j<groups[i].size(); j++){
-            cout<< "angle = "<<groups[i][j][4]<<endl;
+            //cout<< "angle = "<<groups[i][j][4]<<endl;
+            length_sum+= groups[i][j][5];
+            angle_sum += (groups[i][j][4])*(groups[i][j][5]); // need a weighted average!!!!!!
+            angle_divider += groups[i][j][5];
+            x0_sum += groups[i][j][0];
+            y0_sum += groups[i][j][1];
+            x1_sum += groups[i][j][2];
+            y1_sum += groups[i][j][3];
         }
+        angle_avg = angle_sum/angle_divider;
+        cout<<"Sum of lengths: "<<length_sum<<endl;
+        cout<<"Average angle "<<angle_avg<<endl;
+        Vec6f averageSegment;
+        averageSegment[0] = x0_sum/float(groups[i].size());
+        averageSegment[1] = y0_sum/float(groups[i].size());
+        averageSegment[2] = x1_sum/float(groups[i].size());
+        averageSegment[3] = y1_sum/float(groups[i].size());
+        // thats stupid^^
+        averageSegment[4] = angle_avg;
+        averageSegment[5] = length_sum;
+
+        averageSegments.push_back(averageSegment);
+        lengths.push_back(length_sum);
 
     }
-    // Now this should be weighted with the lenght of the lines that the angles belong to
+    // super ugly sorting algorithm dont even try to understand :P
+    vector<Vec6f> sortedSegments;
+    while(!lengths.empty()){
+        // float minLength =  findmin(lengths); // ascending order
+        float maxLength =  findmax(lengths); // descending order
+        for(size_t i = 0;i<averageSegments.size(); i++){
+            if(averageSegments[i][5]==maxLength){
+                lengths.erase(lengths.begin()+ i);
+                sortedSegments.push_back(averageSegments[i]);
+                averageSegments.erase(averageSegments.begin() +i);
+
+
+            }
+        }
+    } //^^^^CANT BELIEVE THIS WORKS^^^^
+
+    //Draw the results
+    for(size_t i =0;i<sortedSegments.size(); i++){
+        //cout<<"sorted lengths in descending order: "<<sortedSegments[i][5]<<endl;
+        line( lineImage, Point(int(sortedSegments[i][0]),int(sortedSegments[i][1])), Point(int(sortedSegments[i][2]),int( sortedSegments[i][3])), Scalar(0,255,255), 2, 2 );
+
+
+    }
+
+
+    int depth = sortedSegments.size()-1;
+    size_t iteration = 0;
+
+    vector<Vec6f> matchedSegments;
+    matchedSegments.resize(sortedSegments.size());
+
+    float matchLimit = 10; // which angle interval counts as a match
+    while(iteration<depth){
+        // First check the longest line, then the second longest and son on...
+        Vec6f masterSegment = sortedSegments[iteration];
+        Vec6f matchedSegment; // [0]: num of orthogonal matches, [1] num of parallel matches
+        float masterAngle = masterSegment[4];
+        for(size_t i = iteration + 1; i < sortedSegments.size();  i++ ){
+
+            float examinedAngle = sortedSegments[i][4];
+
+            if(masterAngle>90){
+                masterAngle = masterAngle-180;
+            }
+            if(examinedAngle>90){
+                examinedAngle = examinedAngle-180;
+            }
+            // Check for parallellity:
+            float epsilon = abs( masterAngle - examinedAngle ); // find the angle distance from master
+            //cout<<"Parallelity factor between master: "<<masterAngle<<" and examined: "<<examinedAngle<<"is: "<<epsilon<<endl;
+            // Check for parallellity:
+            if(epsilon <=matchLimit){
+                // We add the length of the line we matched with, and normalize it with the quality of the match (angle distance)
+                matchedSegment[0] += sortedSegments[i][5]/epsilon;
+
+            }
+            // Check for orthogonality:
+            epsilon = abs(90-(abs( masterAngle - examinedAngle ))); // find the angle distance from master
+            cout<<"Orthogonality factor between master: "<<masterAngle<<" and examined: "<<examinedAngle<<"is: "<<epsilon<<endl;
+            // Check for parallellity:
+            if(epsilon <=matchLimit){
+                // We add the length of the line we matched with, and normalize it with the quality of the match (angle distance)
+                matchedSegment[1] += sortedSegments[i][5]/epsilon;
+
+            }
+
+        }
+        matchedSegment[3] = masterAngle;
+        matchedSegments.push_back(matchedSegment);
+        iteration++;
+
+    }
+    cout<<endl<<endl;
+    for(size_t i =0; i < matchedSegments.size();  i++ ){
+        cout<<"segment "<< i<<endl<<"parallelmatches: "<<matchedSegments[i][0]<<", orth. matches: "<<matchedSegments[i][1]<< ",angle: "<<matchedSegments[i][3]<<endl;
+    }
+
+
     // find significant lines, then find right angles between these lines (corners)
     imshow("lines",lineImage);
     waitKey(0);
@@ -397,6 +519,27 @@ int findmax(std::vector<int> vals){
     for(size_t i=0;i<vals.size();i++)
         if(max<vals[i]) max=vals[i];
     return max;
+}
+
+float findmax(std::vector<float> vals){
+    float max=vals[0];
+    for(size_t i=0;i<vals.size();i++)
+        if(max<vals[i]) max=vals[i];
+    return max;
+}
+
+int findmin(std::vector<int> vals){
+    int min=vals[0];
+    for(size_t i=0;i<vals.size();i++)
+        if(min>vals[i]) min=vals[i];
+    return min;
+}
+
+float findmin(std::vector<float> vals){
+    float min=vals[0];
+    for(size_t i=0;i<vals.size();i++)
+        if(min>vals[i]) min=vals[i];
+    return min;
 }
 
 std::vector<int> histogram(std::vector<int> data, int rangeWidth){
