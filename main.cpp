@@ -308,10 +308,12 @@ Mat correct(Mat src) {
         float length = float(sqrt((segment.x)*(segment.x)+(segment.y)*(segment.y)));
         //cout<<"length calculated: "<<length<<endl;
 
-        float rawAngle = float(90+(180/CV_PI)*atan2(segment.y,segment.x)); // angle between 0 and 180 degs
+        float rawAngle = float((180/CV_PI)*atan2(segment.x,segment.y)); // angle between 0 and 180 degs
+
 
 
         int theta = int(std::round(rawAngle)); // angle between 0 and 90°
+        //cout<<"th: "<<theta<<endl;
 
 
         //angles should range from 0-90°
@@ -362,7 +364,7 @@ Mat correct(Mat src) {
     for(size_t i = 0;i<angleHist.size(); i++) {
         if(angleHist[i]>int(average)){
             float angle =  angleTolerance*(i+1)-angleTolerance/2; // we get the angle that is in the middle of the range
-            //cout<<"Possibly statistically significant angles: "<<angle<<endl;
+           // cout<<"Possibly statistically significant angles: "<<angle<<endl;
             Vec6f segment ;
 
 
@@ -392,7 +394,7 @@ Mat correct(Mat src) {
     vector<Vec6f> averageSegments;
     vector<float> lengths;
     for(size_t i = 0;i<groups.size(); i++){
-        cout<<endl<< "Group"<< i<<": "<<endl;
+        //cout<<endl<< "Group"<< i<<": "<<endl;
         float length_sum = 0;
         float angle_sum = 0;
         float angle_avg = 0;
@@ -412,8 +414,8 @@ Mat correct(Mat src) {
             y1_sum += groups[i][j][3];
         }
         angle_avg = angle_sum/angle_divider;
-        cout<<"Sum of lengths: "<<length_sum<<endl;
-        cout<<"Average angle "<<angle_avg<<endl;
+       // cout<<"Sum of lengths: "<<length_sum<<endl;
+       // cout<<"Average angle "<<angle_avg<<endl;
         Vec6f averageSegment;
         averageSegment[0] = x0_sum/float(groups[i].size());
         averageSegment[1] = y0_sum/float(groups[i].size());
@@ -437,13 +439,11 @@ Mat correct(Mat src) {
                 lengths.erase(lengths.begin()+ i);
                 sortedSegments.push_back(averageSegments[i]);
                 averageSegments.erase(averageSegments.begin() +i);
-
-
             }
         }
     } //^^^^CANT BELIEVE THIS WORKS^^^^
 
-    //Draw the results
+    //Draw the sorted segments (yellow lines)
     for(size_t i =0;i<sortedSegments.size(); i++){
         //cout<<"sorted lengths in descending order: "<<sortedSegments[i][5]<<endl;
         line( lineImage, Point(int(sortedSegments[i][0]),int(sortedSegments[i][1])), Point(int(sortedSegments[i][2]),int( sortedSegments[i][3])), Scalar(0,255,255), 2, 2 );
@@ -451,12 +451,12 @@ Mat correct(Mat src) {
 
     }
 
-
-    int depth = sortedSegments.size()-1;
-    size_t iteration = 0;
+    // Match the segments with parallel and orthogonal ones:
+    int depth = sortedSegments.size();
+    int iteration = 0;
 
     vector<Vec6f> matchedSegments;
-    matchedSegments.resize(sortedSegments.size());
+    //matchedSegments.resize(sortedSegments.size());
 
     float matchLimit = 10; // which angle interval counts as a match
     while(iteration<depth){
@@ -464,18 +464,28 @@ Mat correct(Mat src) {
         Vec6f masterSegment = sortedSegments[iteration];
         Vec6f matchedSegment; // [0]: num of orthogonal matches, [1] num of parallel matches
         float masterAngle = masterSegment[4];
-        for(size_t i = iteration + 1; i < sortedSegments.size();  i++ ){
+
+        matchedSegment[3] = masterSegment[5];
+        for(int i = iteration + 1; i < sortedSegments.size();  i++ ){
 
             float examinedAngle = sortedSegments[i][4];
 
+            /*
             if(masterAngle>90){
                 masterAngle = masterAngle-180;
             }
             if(examinedAngle>90){
                 examinedAngle = examinedAngle-180;
             }
+            */
+
+
             // Check for parallellity:
             float epsilon = abs( masterAngle - examinedAngle ); // find the angle distance from master
+            if( epsilon > 90){
+                epsilon = 180-epsilon;
+            }
+
             //cout<<"Parallelity factor between master: "<<masterAngle<<" and examined: "<<examinedAngle<<"is: "<<epsilon<<endl;
             // Check for parallellity:
             if(epsilon <=matchLimit){
@@ -485,7 +495,7 @@ Mat correct(Mat src) {
             }
             // Check for orthogonality:
             epsilon = abs(90-(abs( masterAngle - examinedAngle ))); // find the angle distance from master
-            cout<<"Orthogonality factor between master: "<<masterAngle<<" and examined: "<<examinedAngle<<"is: "<<epsilon<<endl;
+            //cout<<"Orthogonality factor between master: "<<masterAngle<<" and examined: "<<examinedAngle<<"is: "<<epsilon<<endl;
             // Check for parallellity:
             if(epsilon <=matchLimit){
                 // We add the length of the line we matched with, and normalize it with the quality of the match (angle distance)
@@ -493,24 +503,119 @@ Mat correct(Mat src) {
 
             }
 
+
         }
-        matchedSegment[3] = masterAngle;
+        matchedSegment[2] = masterAngle;
         matchedSegments.push_back(matchedSegment);
+
         iteration++;
 
     }
     cout<<endl<<endl;
-    for(size_t i =0; i < matchedSegments.size();  i++ ){
-        cout<<"segment "<< i<<endl<<"parallelmatches: "<<matchedSegments[i][0]<<", orth. matches: "<<matchedSegments[i][1]<< ",angle: "<<matchedSegments[i][3]<<endl;
+
+    float oFactor = 3; // how important it is to have orthogonal matches
+    float pFactor = 2; // how important it is to have parallel matches
+    float lengthFactor = 1; // how important is the length of the segment
+
+    // Calculate weighted sum pMatches, oMatches + length:
+    for(size_t i =0; i < matchedSegments.size();  i++ ) {
+        float wSum =  pFactor * matchedSegments[i][0] + oFactor*matchedSegments[i][1] +lengthFactor*matchedSegments[i][3];
+        lengths.push_back(wSum); // recycling lenghts vector that was emptied earlier
+        matchedSegments[i][4] = wSum;
+
+    }
+    // Sorting, again this time the matches:
+    vector<Vec6f> sortedMatches;
+    while(!lengths.empty()){
+        // float minLength =  findmin(lengths); // ascending order
+        float maxLength =  findmax(lengths); // descending order
+        for(size_t i = 0;i<matchedSegments.size(); i++){
+            if(matchedSegments[i][4]==maxLength){
+                lengths.erase(lengths.begin()+ i);
+                sortedMatches.push_back(matchedSegments[i]);
+                matchedSegments.erase(matchedSegments.begin() +i);
+            }
+        }
     }
 
+    // just outputting:
+    for(size_t i =0; i < sortedMatches.size();  i++ ){
+        float pMatches = sortedMatches[i][0];
+        float oMatches = sortedMatches[i][1];
+        float angle = sortedMatches[i][2];
+       // cout<<"segment "<< i<<endl<<"parallelmatches: "<<pMatches<<", orth. matches: "<<  oMatches << ",angle: "
+            //<<angle;
+        //cout<<"Length: "<<sortedMatches[i][3]<< " WSum: "<<sortedMatches[i][4]<<endl;
 
-    // find significant lines, then find right angles between these lines (corners)
+
+    }
+
+    // parallelize orthogonal angles:
+    for(size_t i =0; i < sortedMatches.size()-1;  i++ ){
+        float angle = sortedMatches[i][2];
+        float nextAngle = 0;
+
+        nextAngle = sortedMatches[i+1][2];
+        //cout<<"anlge: "<<angle<<"nextAngle :"<<nextAngle<<endl<<endl;
+
+        float epsilon =abs (nextAngle-angle);
+        if(epsilon > 90){
+            if(nextAngle>angle){
+                nextAngle = nextAngle-180;
+            }
+            else{
+                nextAngle = nextAngle+180;
+            }
+
+        }
+
+
+        epsilon =abs (nextAngle-angle);
+        if(epsilon>45){
+            if(nextAngle>angle){
+                nextAngle = nextAngle-90;
+            }
+            else{
+                nextAngle = nextAngle+90;
+            }
+        }
+        sortedMatches[i+1][2] = nextAngle;
+    }
+    size_t maxIndex = 3;
+    float angle_sum = 0;
+    float weight = 0;
+    for(size_t i =0; i < maxIndex && i < sortedMatches.size();  i++ ){
+        cout<<"angle "<<sortedMatches[i][2]<<endl;
+        angle_sum+=sortedMatches[i][4] * sortedMatches[i][2];
+        //cout<<"anglesum "<<angle_sum<<endl;
+        weight+=sortedMatches[i][4];
+    }
+    float orientation = angle_sum/weight;
+/*
+    if(orientation > 90 ) {
+        orientation =180-orientation;
+    }
+    if(orientation > 45 ) {
+        orientation =orientation-90;
+    }
+    */
+    cout<<endl<<"Orientation: "<< orientation<<endl;
+
     imshow("lines",lineImage);
+    Point2f cent;
+    cent.x = lineImage.cols/2;
+    cent.y = lineImage.rows/2;
+    Mat RotMx = getRotationMatrix2D(cent,int(-orientation),1);
+    warpAffine(lineImage,lineImage,RotMx, lineImage.size());
+
+
+    warpAffine(bw,bw,RotMx, bw.size());
+    // find significant lines, then find right angles between these lines (corners)
+    imshow("rotated",bw);
     waitKey(0);
 
 
-    return mask;
+    return bw;
 
 }
 
