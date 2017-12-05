@@ -1,3 +1,9 @@
+//05-12-2017
+
+// This cpp contains everything so far. Project isn't using header files yet
+
+
+
 #include "opencv2/imgcodecs.hpp"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -62,13 +68,14 @@ uint8_t SolutionElement::getOrientation() {
     return orientation;
 }
 
-
+Mat segmentThresh_bad(Mat src);
 Mat drawLargestContour(Mat, int, bool);
 Mat segmentThresh(Mat);
 Mat segmentCanny(Mat);
 Mat segment(Mat);
 Mat correct(Mat);
 Mat processRawImage(int fileIndex = 0);
+Mat processRawImageBB(int fileIndex = 0);
 Mat saveImage(int , Mat);
 Mat resultImage();
 Contour_t getLongestContour(Mat); //  depracated
@@ -84,34 +91,46 @@ std::vector<int> cont_histogram(std::vector<int> data);
 void drawHistogram(vector<int> hist);
 
 int main() {
-    for(int i=0;i<1008;i++){
-        Mat res = processRawImage(i);
-
+    for(int i=0;i<1007;i++){
+        //Mat res = processRawImage(i);
+        Mat res = processRawImageBB(i);
         //imshow("res",res);
         // waitKey(0);
         //imshow("res",res);
-        int nonZeros =  countNonZero(res);
-        //cout<<"nonZero: "<<nonZeros<<endl;
-        Mat straight;
-        // if segmentation failed don't even try to straighten, because it can crash the program...
-        if(nonZeros>1500){
-            straight = correct(res);
-        }
-        else{
-            straight = Mat::zeros(res.size(),CV_8UC3);
-            putText(straight, "Segmentation failed", cvPoint(120,120),
-                    FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(200,200,250), 1, CV_AA);
-        }
-
-       // imshow("straight", straight);
-       // waitKey(0);
+       // int nonZeros =  countNonZero(res);
+        Mat straight= correct(res);
+         imshow("straight", straight);
+         waitKey(0);
         char outputFile [100];
-        sprintf(outputFile,"../output/%d.jpg",i);
+        sprintf(outputFile,"../outputBB/%d.jpg",i);
         imwrite(outputFile,straight);
-       // saveImage(i,res);
+        // saveImage(i,res);
 
     }
     return 0;
+}
+
+Mat processRawImageBB(int fileIndex){ // just opens image
+    fileIndex = fileIndex+1;
+    char inputFile [100];
+    if(fileIndex<10){
+        sprintf(inputFile,"../rawBB/000%d.jpg",fileIndex);
+    }
+    else if(fileIndex>=10 && fileIndex<100){
+        sprintf(inputFile,"../rawBB/00%d.jpg",fileIndex);
+    }
+    else if(fileIndex>=100 && fileIndex<1000){
+        sprintf(inputFile,"../rawBB/0%d.jpg",fileIndex);
+    }
+    else if(fileIndex>=1000){
+        sprintf(inputFile,"../rawBB/%d.jpg",fileIndex);
+    }
+    //cout<<inputFile<<endl;
+    Mat source = imread(inputFile,1);
+    //imshow("source",source);
+    //waitKey(0);
+    return source;
+
 }
 
 Mat processRawImage(int fileIndex){
@@ -121,7 +140,8 @@ Mat processRawImage(int fileIndex){
 
     Mat source = imread(inputFile,1);
     //imshow("source",source);
-    Mat mask = segmentThresh(source);
+    //waitKey(0);
+    Mat mask = segment(source);
     return mask;
 
 }
@@ -135,7 +155,40 @@ Mat saveImage(int fileIndex,  const Mat img) {
 
 //Mat resultImage( SolutionElement solutionMx[noCols][noRows]){
 
-Mat segmentThresh(Mat src){
+Mat segment(Mat src){
+    Mat copySrc = src;
+    Mat copy2Src = src;
+    Mat threshMask = segmentThresh(copy2Src);
+    Mat cannyMask = segmentCanny(copySrc);
+    Mat threshBin;
+    Mat cannyBin;
+
+    threshold( threshMask, threshBin, 100,255,THRESH_BINARY );
+    threshold( cannyMask, cannyBin, 100,255,THRESH_BINARY );
+
+    int threshResult = countNonZero(threshBin);
+    int cannyResult = countNonZero(cannyBin);
+
+    //std::cout<<"Threshresult: "<< threshResult<<std::endl;
+    //std::cout<<"cannyResult: "<< cannyResult<<std::endl;
+    //imshow("Thresh",threshMask);
+    //imshow("Canny", cannyMask);
+    //waitKey(0);
+
+
+    if(threshResult>cannyResult){
+        return threshMask;
+    }
+    else{
+        return cannyMask;
+    }
+
+
+
+
+}
+
+Mat segmentThresh_bad(Mat src){
     bool loadfailed = false;
     if (!src.data || src.empty())
     {
@@ -176,10 +229,107 @@ Mat segmentThresh(Mat src){
     return mask;
 }
 
+Mat segmentThresh(Mat src){
+    bool loadfailed = false;
+    if (!src.data || src.empty())
+    {
+        std::cout << "Problem loading image!!!" << std::endl;
+    }
+    else{
+        loadfailed = true;
+    }
+    Mat gray;
+    cvtColor(src, gray, COLOR_BGR2GRAY);
+
+    // Convert image to binary
+    Mat bw;
+    threshold(gray,bw,190,255,CV_THRESH_BINARY_INV);
+    // adaptiveThreshold(bw, bw, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY_INV, 5,2);
+    //imshow("bw",bw);
+    int padding = 100;
+    copyMakeBorder(bw, bw, padding, padding, padding, padding, BORDER_CONSTANT, (0,0,0));
+    copyMakeBorder(src, src, padding, padding, padding, padding, BORDER_CONSTANT, (0,0,0));
+    int morph_size =2;
+    // Mat element = getStructuringElement( MORPH_RECT, Size( 2*morph_size + 1, 2*morph_size+1 ), Point( morph_size, morph_size ) );
+    Mat element = getStructuringElement(MORPH_ELLIPSE,Size (morph_size,morph_size));
+    // Mat kernel = Mat::ones(1,1, CV_32F);
+    morphologyEx(bw, bw, MORPH_CLOSE, element, Point(-1,-1), 3);
+
+    //imshow("closed",bw);
+    // Find all the contours in the thresholded image
+    std::vector<Vec4i> hierarchy;
+    Mat mask = drawLargestContour(bw,1,true);
+
+    return mask;
+}
+
+Mat segmentCanny(Mat src){
+
+    Mat gray;
+    cvtColor(src, gray, COLOR_BGR2GRAY);
+    // Convert image to binary
+    Mat bw;
+
+    adaptiveThreshold(gray, gray, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY_INV, 41,20); //(31, 20) (41,20)
+    int padding = 100;
+    copyMakeBorder(gray, gray, padding, padding, padding, padding, BORDER_CONSTANT, (0,0,0));
+    copyMakeBorder(src, src, padding, padding, padding, padding, BORDER_CONSTANT, (0,0,0));
 
 
+    int morph_size =1;
+    Mat element = getStructuringElement( MORPH_RECT, Size(morph_size,morph_size) );
+    morphologyEx(gray, bw, MORPH_OPEN, element);
+
+    morph_size =3;
+    element = getStructuringElement( MORPH_RECT, Size(morph_size,morph_size) );
+    morphologyEx(bw, bw, MORPH_CLOSE, element);
 
 
+    Canny(bw, bw, 100, 200, 3);
+    morph_size =5;
+    element = getStructuringElement( MORPH_ELLIPSE, Size(morph_size,morph_size) );
+    morphologyEx(bw, bw, MORPH_CLOSE, element);
+
+
+    // Find all the contours in the thresholded image
+    std::vector<Vec4i> hierarchy;
+    std::vector<std::vector<Point> > contours;
+    findContours(bw, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+    double area = 0;
+    double largestArea = 0;
+    size_t largestIndex = 0;
+    for (size_t i = 0; i < contours.size(); ++i)
+    {
+        // Calculate the area of each contour
+        area = contourArea(contours[i]);
+        // Ignore contours that are too small or too large. If true, than the loop starts again
+        if (area < 1e2 || 1e5 < area) continue; //
+        //if false:
+        // Find the contour with the largest area:
+        if (area > largestArea) {
+            largestArea = area;
+            largestIndex = i; // i is type size_t, should be converted to int.
+        }
+
+        //drawContours(src, contours, static_cast<int>(i), Scalar(0, 0, 255), 3, 8, hierarchy, 0);
+    }
+
+    std::vector<std::vector<Point> >  largestContour;
+    largestContour.resize(contours.size()); //Otherwise it is just a null pointer and the program crashes!
+    size_t index = 0;
+
+    int strength = 1; // distance between the original contour and the approximated contour
+    approxPolyDP(Mat(contours[largestIndex]), largestContour[index], strength, true);
+    Mat mask =  Mat::zeros(src.size(), CV_8UC1);
+
+
+    drawContours(mask, largestContour,index, 255, CV_FILLED, 8, hierarchy, 0); //instead of line thickness CV_FILLED
+    //imshow("mask", mask);
+    morph_size =5;
+    element = getStructuringElement( MORPH_RECT, Size( 2*morph_size + 1, 2*morph_size+1 ), Point( morph_size, morph_size ) );
+    morphologyEx(mask, mask, MORPH_CLOSE, element, Point(-1,-1), 1);
+    return mask;
+}
 
 Mat drawLargestContour(Mat bw, int approxStrength, bool filled){
 
@@ -203,7 +353,6 @@ Mat drawLargestContour(Mat bw, int approxStrength, bool filled){
 
     return(mask);
 }
-
 
 Contour_t getLongestContour(Mat bw){
 
@@ -232,7 +381,6 @@ Contour_t getLongestContour(Mat bw){
     return(largestContour);
 }
 
-
 int getLongestContourIndex(Contour_t contours){
     double area = 0;
     double largestArea = 0;
@@ -253,28 +401,41 @@ Mat correct(Mat src) {
 // input should be 1 channel black and white image can be filled or  contoured
     //counter++;
     //cout<<"counter: "<<counter<<endl;
-     //imshow("input",src);
+    //imshow("input",src);
+   // waitKey(0);
     // IMPORTANT CONSTANTS THAT CAN BE TWEAKED:
 
-    float angleTolerance = 6; // range width of the histogram in degrees
+    Mat bw = segment(src);
+
+    int padding = 100;
+    Mat padded;
+    copyMakeBorder(src, src, padding, padding, padding, padding, BORDER_CONSTANT, Scalar(255,255,255));
+   // imshow("src",src);
+    Mat segmented = bw;
+   // imshow("segsfsdf",segmented);
+    //8
+    Mat alphaimage;
+    cvtColor(src,alphaimage,CV_BGR2BGRA);
+    float angleTolerance = 15; // range width of the histogram in degrees
     size_t maxIndex = 2; // The first three dominant segment groups will be examined
 
     // weighting factors:
     float oFactor = 2; // how important it is to have orthogonal matches
     float pFactor = 2; // how important it is to have parallel matches
-    float lengthFactor =3; // how important is the length of the segment
+    float lengthFactor =2; // how important is the length of the segment
     float matchLimit = 15; // which angle interval counts as a match
     int lineThresh = 20;
-    double minLineLength = 5;
-    double maxLineGap = 3;
+    double minLineLength = 10;
+    double maxLineGap = 2;
+    int approxStrength = 10;
 
     // input should be 1 channel black and white image
 
     //## Rotating the image using minimum area bounding rectangle:
 
-    Mat bw;
-    threshold(src, bw, 150, 255, CV_THRESH_BINARY); // INV: invert for findContours to work properly
-    bw = drawLargestContour(bw,1,false);
+
+    //threshold(src, bw, 150, 255, CV_THRESH_BINARY); // INV: invert for findContours to work properly
+    bw = drawLargestContour(bw,6,false);
     //imshow("bwww",bw);
     // Find all the contours in the thresholded image
     Hierarchy_t hierarchy;
@@ -316,7 +477,7 @@ Mat correct(Mat src) {
 
 
     Mat contourImage =  Mat::zeros(bw.size(), CV_8UC3);
-    contourImage =  drawLargestContour(bw,1,false);
+    contourImage =  drawLargestContour(bw,approxStrength,false);
     //imshow("bw",bw);
     //waitKey(0);
     HoughLinesP(bw, lines, 1, CV_PI/180, lineThresh, minLineLength, maxLineGap); //needs binary image!!
@@ -353,8 +514,7 @@ Mat correct(Mat src) {
             //line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(0,255,255), 1, 1 );
         }
     }
-    //imshow("lines", lineImage);
-    //waitKey(0);
+
     vector<int>angles;
     for(size_t i = 0; i<segments.size();i++){
         angles.push_back(int(segments[i][4]));
@@ -385,10 +545,8 @@ Mat correct(Mat src) {
     for(size_t i = 0;i<angleHist.size(); i++) {
         if(angleHist[i]>int(average)){
             float angle =  angleTolerance*(i+1)-angleTolerance/2; // we get the angle that is in the middle of the range
-           // cout<<"Possibly statistically significant angles: "<<angle<<endl;
+            // cout<<"Possibly statistically significant angles: "<<angle<<endl;
             Vec6f segment ;
-
-
             segment[4] = angle;
             significantSegments.push_back(segment);
         }
@@ -403,9 +561,9 @@ Mat correct(Mat src) {
         //cout <<endl<<"angle to examine: "<< ang<<endl;
         for(size_t j = 0;j< significantSegments.size(); j++){
             float significantAngle =  significantSegments[j][4];
-           // cout <<endl<<"significant angle to compare with: "<< significantAngle<<endl;
+            // cout <<endl<<"significant angle to compare with: "<< significantAngle<<endl;
             if( significantAngle-angleTolerance/2 < ang && ang <=significantAngle+angleTolerance/2) {
-              // cout<<"length "<< segments[i][5] <<endl;
+                // cout<<"length "<< segments[i][5] <<endl;
 
                 groups[j].push_back(segments[i]); // Sorting every statistically singnificant segment into a group
             }
@@ -438,8 +596,8 @@ Mat correct(Mat src) {
             y1_sum += groups[i][j][3];
         }
         angle_avg = angle_sum/angle_divider;
-       // cout<<"Sum of lengths: "<<length_sum<<endl;
-       // cout<<"Average angle "<<angle_avg<<endl;
+        // cout<<"Sum of lengths: "<<length_sum<<endl;
+        // cout<<"Average angle "<<angle_avg<<endl;
         Vec6f averageSegment;
         averageSegment[0] = x0_sum/float(groups[i].size());
         averageSegment[1] = y0_sum/float(groups[i].size());
@@ -468,13 +626,15 @@ Mat correct(Mat src) {
     } //^^^^CANT BELIEVE THIS WORKS^^^^
 
     //Draw the sorted segments (yellow lines)
-    for(size_t i =0;i<sortedSegments.size(); i++){
+    for(size_t i = 0;i<sortedSegments.size(); i++){
         //cout<<"sorted lengths in descending order: "<<sortedSegments[i][5]<<endl;
         line( lineImage, Point(int(sortedSegments[i][0]),int(sortedSegments[i][1])), Point(int(sortedSegments[i][2]),int( sortedSegments[i][3])), Scalar(0,255,255), 2, 2 );
 
 
     }
 
+//    imshow("sortedLines:", lineImage);
+//    waitKey(0) ;
     // Match the segments with parallel and orthogonal ones:
     int depth = sortedSegments.size();
     int iteration = 0;
@@ -535,7 +695,7 @@ Mat correct(Mat src) {
         iteration++;
 
     }
-   // cout<<endl<<endl;
+    // cout<<endl<<endl;
 
 
 
@@ -576,6 +736,7 @@ Mat correct(Mat src) {
 
     // parallelize orthogonal angles:
     for(size_t i =0; i < sortedMatches.size()-1;  i++ ){
+
         float angle = sortedMatches[i][2];
         float nextAngle = 0;
 
@@ -607,21 +768,12 @@ Mat correct(Mat src) {
     float angle_sum = 0;
     float weight = 0;
     for(size_t i =0; i < maxIndex && i < sortedMatches.size();  i++ ){
-       // cout<<"angle "<<sortedMatches[i][2]<<endl;
+        // cout<<"angle "<<sortedMatches[i][2]<<endl;
         angle_sum+=sortedMatches[i][4] * sortedMatches[i][2];
         //cout<<"anglesum "<<angle_sum<<endl;
         weight+=sortedMatches[i][4];
     }
     float orientation = angle_sum/weight;
-/*
-    if(orientation > 90 ) {
-        orientation =180-orientation;
-    }
-    if(orientation > 45 ) {
-        orientation =orientation-90;
-    }
-    */
-    //cout<<endl<<"Orientation: "<< orientation<<endl;
 
     //imshow("lines",lineImage);
     Point2f cent;
@@ -630,13 +782,50 @@ Mat correct(Mat src) {
     Mat RotMx = getRotationMatrix2D(cent,int(-orientation),1);
     warpAffine(lineImage,lineImage,RotMx, lineImage.size());
 
-    warpAffine(src,src,RotMx, src.size());
+
+    Mat invert = Mat::ones(src.size(), CV_8UC3);
+    bitwise_not ( src, invert );
+
+    cent.x = invert.cols/2;
+    cent.y = invert.rows/2;
+    RotMx = getRotationMatrix2D(cent,int(-orientation),1);
+
+    warpAffine(invert,invert,RotMx, invert.size());
     // find significant lines, then find right angles between these lines (corners)
     //imshow("rotated",src);
     //waitKey(0);
 
+    cent.x = segmented.cols/2;
+    cent.y = segmented.rows/2;
+    RotMx = getRotationMatrix2D(cent,int(-orientation),1);
+    warpAffine(segmented,segmented,RotMx, segmented.size());
+    imshow("seg", segmented);
+    // imshow("rotated", src);
+    // waitKey(0);
+    bitwise_not(invert,invert);
+    Mat alphImage;
+    cvtColor(invert,alphImage,CV_BGR2BGRA);
 
-    return src;
+    for(size_t i = 0; i< alphImage.rows;i++){
+        for(size_t j = 0; j< alphImage.cols; j++){
+            if(segmented.at<uchar>(i,j) ==0){
+                Vec4b intensity = alphImage.at<Vec4b>(i, j);
+                uchar blue = intensity.val[0];
+                uchar green = intensity.val[1];
+                uchar red = intensity.val[2];
+                intensity.val[3] = 0;
+
+                alphImage.at<Vec4b>(i,j) = intensity; // alpha channel set to zero
+            }
+
+        }
+    }
+
+
+    imwrite("../solution/alpha.png", alphImage);
+    fprintf(stdout, "Saved PNG file with alpha data.\n");
+
+    return invert;
 
 }
 
