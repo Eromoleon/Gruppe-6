@@ -93,8 +93,8 @@ void drawHistogram(vector<int> hist);
 int main(){
 
 
-    noRows = 20;
-    noCols = 30;
+    noRows = 15;
+    noCols = 15;
     vector<vector< SolutionElement>> solvedMx;
     solvedMx.resize(noRows);
     int index = 35; // random

@@ -17,7 +17,6 @@
 //Constants:
 
 using namespace cv;
-
 // common std members:
 using std::cout;
 using std::cin;
@@ -28,8 +27,9 @@ using std::endl;
 const int noRows = 5;
 const int noCols = 13;
 
-//using namespace std;
 
+
+//<editor-fold desc="types and classes:">
 //typedefs:
 
 typedef std::vector<std::vector<Point>> Contour_t;
@@ -51,6 +51,7 @@ protected:
     uint16_t index;  //x.jpg
     uint8_t orientation;    //CW rotation = orientation*90 (deg): 0,1,2,3
 };
+//</editor-fold>
 
 
 // Function headers:
@@ -73,11 +74,12 @@ Mat drawLargestContour(Mat, int, bool);
 Mat segmentThresh(Mat);
 Mat segmentCanny(Mat);
 Mat segment(Mat);
-Mat correct(Mat);
+Mat correct(Mat, bool = false);
 Mat processRawImage(int fileIndex = 0);
 Mat processRawImageBB(int fileIndex = 0);
 Mat saveImage(int , Mat);
 Mat resultImage();
+int findOrientation(Mat);
 Contour_t getLongestContour(Mat); //  depracated
 int getLongestContourIndex(Contour_t);
 
@@ -91,18 +93,38 @@ std::vector<int> cont_histogram(std::vector<int> data);
 void drawHistogram(vector<int> hist);
 
 int main() {
-    for(int i=0;i<1007;i++){
+    for(int i=0;i<1008;i++){
         //Mat res = processRawImage(i);
         Mat res = processRawImageBB(i);
         //imshow("res",res);
         // waitKey(0);
         //imshow("res",res);
-       // int nonZeros =  countNonZero(res);
-        Mat straight= correct(res);
-         imshow("straight", straight);
-         waitKey(0);
+        Mat segmentCheck = segment(res);
+        int nonZeros =  countNonZero(segmentCheck);
+        Mat straight;
+        Mat alpha;
+        if(nonZeros>2000){
+            straight = correct(res, false);
+            alpha = correct(res, true);
+
+        }
+        else{
+            straight = Mat::zeros(res.size(),CV_8UC3);
+            putText(straight, "Segmentation failed", cvPoint(120,120),
+                    FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(200,200,250), 1, CV_AA);
+            alpha = Mat::zeros(res.size(),CV_8UC4);
+            putText(alpha, "Image segmentation failed", cvPoint(30,120),
+                    FONT_HERSHEY_COMPLEX_SMALL,0.8, cvScalar(100,100,100),1,CV_AA);
+        }
+
+
+
+        char outputalpha [100];
+        sprintf(outputalpha,"../output_transparent/%d.png",i);
+        imwrite(outputalpha, alpha);
+
         char outputFile [100];
-        sprintf(outputFile,"../outputBB/%d.jpg",i);
+        sprintf(outputFile,"../outputVZ/%d.jpg",i);
         imwrite(outputFile,straight);
         // saveImage(i,res);
 
@@ -139,12 +161,10 @@ Mat processRawImage(int fileIndex){
     sprintf(inputFile,"../input/%d.jpg",fileIndex);
 
     Mat source = imread(inputFile,1);
-    //imshow("source",source);
-    //waitKey(0);
-    Mat mask = segment(source);
-    return mask;
+    return source;
 
 }
+
 Mat saveImage(int fileIndex,  const Mat img) {
     Mat saveMat = img;
     cvtColor(saveMat,saveMat, CV_GRAY2BGR,3);
@@ -176,12 +196,22 @@ Mat segment(Mat src){
     //waitKey(0);
 
 
+    Mat returnMask;
     if(threshResult>cannyResult){
-        return threshMask;
+        returnMask = threshMask;
     }
     else{
-        return cannyMask;
+        returnMask = cannyMask;
     }
+
+    Canny(returnMask,returnMask,100,200,3);
+    // close shape:
+    int morph_size = 6;
+    Mat element = getStructuringElement( MORPH_RECT, Size( 2*morph_size + 1, 2*morph_size+1 ), Point( morph_size, morph_size ) );
+    morphologyEx(returnMask,returnMask,MORPH_CLOSE,element);
+    returnMask = drawLargestContour(returnMask,0,true);
+    return returnMask;
+
 
 
 
@@ -397,25 +427,8 @@ int getLongestContourIndex(Contour_t contours){
     return(largestIndex);
 }
 
-Mat correct(Mat src) {
-// input should be 1 channel black and white image can be filled or  contoured
-    //counter++;
-    //cout<<"counter: "<<counter<<endl;
-    //imshow("input",src);
-   // waitKey(0);
-    // IMPORTANT CONSTANTS THAT CAN BE TWEAKED:
-
-    Mat bw = segment(src);
-
-    int padding = 100;
-    Mat padded;
-    copyMakeBorder(src, src, padding, padding, padding, padding, BORDER_CONSTANT, Scalar(255,255,255));
-   // imshow("src",src);
-    Mat segmented = bw;
-   // imshow("segsfsdf",segmented);
-    //8
-    Mat alphaimage;
-    cvtColor(src,alphaimage,CV_BGR2BGRA);
+int findOrientation(const Mat inputBW){
+    Mat bw = inputBW.clone();
     float angleTolerance = 15; // range width of the histogram in degrees
     size_t maxIndex = 2; // The first three dominant segment groups will be examined
 
@@ -424,20 +437,17 @@ Mat correct(Mat src) {
     float pFactor = 2; // how important it is to have parallel matches
     float lengthFactor =2; // how important is the length of the segment
     float matchLimit = 15; // which angle interval counts as a match
-    int lineThresh = 20;
-    double minLineLength = 10;
-    double maxLineGap = 2;
+    int lineThresh = 15;
+    double minLineLength = 5;
+    double maxLineGap = 3;
     int approxStrength = 10;
+    //<editor-fold desc="MAGIC">
 
-    // input should be 1 channel black and white image
-
+    bw = drawLargestContour(bw,6,true); // Strong polygon approximation for better line detection
+    //<editor-fold desc="Rotating with minArea rotated Rectangle">
     //## Rotating the image using minimum area bounding rectangle:
 
-
-    //threshold(src, bw, 150, 255, CV_THRESH_BINARY); // INV: invert for findContours to work properly
-    bw = drawLargestContour(bw,6,false);
-    //imshow("bwww",bw);
-    // Find all the contours in the thresholded image
+    // Finding contours is required for rotated Rectangle:
     Hierarchy_t hierarchy;
     Contour_t contours;
     findContours(bw, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
@@ -449,16 +459,13 @@ Mat correct(Mat src) {
     Point2f rect_points[4];
     box.points( rect_points );
     double alpha = 0;
-
     YouCanCommentLikeThisLOL:
     //Draw the rectangle:
     for( int j = 0; j < 4; j++ )
         line( mask, rect_points[j], rect_points[(j+1)%4], Scalar(0,255,0), 2, 8 );
-
     alpha =  atan2( (rect_points[1].x-rect_points[0].x) , (rect_points[1].y-rect_points[0].y)  );
     alpha = alpha*180/CV_PI;
     //std::cout<<alpha;
-
     //Rotate conter clockwise by alpha:
     Point2f center;
     center.x = mask.cols/2;
@@ -467,20 +474,19 @@ Mat correct(Mat src) {
     warpAffine(mask,mask,RotMatrix, mask.size());
 
     //## Done rotating the image using minimum area rectangle
+    //</editor-fold>
 
     // ##Find the angle of all line segments and create a histogram, then match parallel and orthogonal lines to approximate
     // the orientation of the shape
 
-
+    //<editor-fold desc="Getting the lines">
     std::vector<Vec4i> lines;
+    Mat cannyImage =  Mat::zeros(bw.size(), CV_8UC3);
+    Canny(bw, cannyImage, 150, 200, 3);
 
-
-
-    Mat contourImage =  Mat::zeros(bw.size(), CV_8UC3);
-    contourImage =  drawLargestContour(bw,approxStrength,false);
     //imshow("bw",bw);
     //waitKey(0);
-    HoughLinesP(bw, lines, 1, CV_PI/180, lineThresh, minLineLength, maxLineGap); //needs binary image!!
+    HoughLinesP(cannyImage, lines, 1, CV_PI/180, lineThresh, minLineLength, maxLineGap); //needs binary image!!
     Mat lineImage = Mat::zeros(mask.size(),CV_8UC3);
     std::vector<Vec6f> segments; // Similar to vector<Vec4i> lines but with 2 additional data: Angle to x axis and length
     for( size_t i = 0; i < lines.size(); i++ )
@@ -504,22 +510,21 @@ Mat correct(Mat src) {
         lineObject[5] = float(length);
         segments.push_back(lineObject);
         // At this point we have a lineObject that contains x0, y0, x1, y1, the length and angle of a line
-        if(length < 30){
-            // Blue:
-            line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(244,100,0), 1, 1 );
-        }
-        else{
-            // Blue:
-            line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(244,100,0), 1, 1 );
+
+            line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(244,200,50), 2, 1 );
             //line( lineImage, Point(lines[i][0], lines[i][1]), Point(lines[i][2], lines[i][3]), Scalar(0,255,255), 1, 1 );
-        }
+
     }
+    //</editor-fold>
+    //imshow("BW", bw);
+    //imshow("Canny Image", cannyImage);
+   // imshow("lines",lineImage);
+   // waitKey(0);
 
     vector<int>angles;
     for(size_t i = 0; i<segments.size();i++){
         angles.push_back(int(segments[i][4]));
     }
-
 
     vector<int> angleHist = histogram(angles,int(angleTolerance));
     // drawHistogram(angleHist);
@@ -543,13 +548,23 @@ Mat correct(Mat src) {
 
     vector<Vec6f> significantSegments;
     for(size_t i = 0;i<angleHist.size(); i++) {
-        if(angleHist[i]>int(average)){
+        if(angleHist[i]>=int(average)){
             float angle =  angleTolerance*(i+1)-angleTolerance/2; // we get the angle that is in the middle of the range
             // cout<<"Possibly statistically significant angles: "<<angle<<endl;
             Vec6f segment ;
             segment[4] = angle;
             significantSegments.push_back(segment);
         }
+    }
+    if(significantSegments.empty()){
+        cout<<"average: "<<average<<endl;
+        cout<<"nonNonzero: "<<noNonZero<<endl;
+        drawHistogram(angleHist);
+        cout<<"significantsegments.size: "<<significantSegments.size()<<endl;
+        imshow("BW", bw);
+        imshow("Canny Image", cannyImage);
+        imshow("lines",lineImage);
+        waitKey(0);
     }
 
     // Arranging the significant segments into groups based on their angles (parallelity):
@@ -572,6 +587,7 @@ Mat correct(Mat src) {
     }
 
     // Constructing a single average segment from every group of segments:
+
 
     vector<Vec6f> averageSegments;
     vector<float> lengths;
@@ -625,12 +641,11 @@ Mat correct(Mat src) {
         }
     } //^^^^CANT BELIEVE THIS WORKS^^^^
 
+
     //Draw the sorted segments (yellow lines)
     for(size_t i = 0;i<sortedSegments.size(); i++){
         //cout<<"sorted lengths in descending order: "<<sortedSegments[i][5]<<endl;
         line( lineImage, Point(int(sortedSegments[i][0]),int(sortedSegments[i][1])), Point(int(sortedSegments[i][2]),int( sortedSegments[i][3])), Scalar(0,255,255), 2, 2 );
-
-
     }
 
 //    imshow("sortedLines:", lineImage);
@@ -735,6 +750,8 @@ Mat correct(Mat src) {
      */
 
     // parallelize orthogonal angles:
+
+
     for(size_t i =0; i < sortedMatches.size()-1;  i++ ){
 
         float angle = sortedMatches[i][2];
@@ -751,7 +768,6 @@ Mat correct(Mat src) {
             else{
                 nextAngle = nextAngle+180;
             }
-
         }
         epsilon =abs (nextAngle-angle);
         if(epsilon>45){
@@ -764,6 +780,7 @@ Mat correct(Mat src) {
         }
         sortedMatches[i+1][2] = nextAngle;
     }
+    //</editor-fold>
 
     float angle_sum = 0;
     float weight = 0;
@@ -773,39 +790,56 @@ Mat correct(Mat src) {
         //cout<<"anglesum "<<angle_sum<<endl;
         weight+=sortedMatches[i][4];
     }
-    float orientation = angle_sum/weight;
+    auto orientation = int(round(angle_sum/weight));
+    return orientation;
+}
 
-    //imshow("lines",lineImage);
+Mat correct(Mat src, bool with_alpha) {
+
+    Mat bw = segment(src);
+    int orientation = findOrientation(bw);
+    Mat returnBW = bw.clone();
+    //imshow("retBW", returnBW);
+    int padding = 100;
+    Mat padded;
+    copyMakeBorder(src, src, padding, padding, padding, padding, BORDER_CONSTANT, Scalar(255,255,255));
+   // imshow("src",src);
+    // Erode the remaining white edge
+    int morph_size = 5;
+    Mat segmented = bw;
+    Mat element = getStructuringElement( MORPH_ELLIPSE, Size( 2*morph_size + 1, 2*morph_size+1 ), Point( morph_size, morph_size ) );
+    // Point morph size makes it omnidirectional
+    morphologyEx(segmented, segmented, MORPH_ERODE, element);
+    Canny(segmented,segmented,100,200,3);
+    // close shape:
+    morph_size = 5;
+    element = getStructuringElement( MORPH_RECT, Size( 2*morph_size + 1, 2*morph_size+1 ), Point( morph_size, morph_size ) );
+    morphologyEx(segmented,segmented,MORPH_CLOSE,element);
+    segmented = drawLargestContour(segmented,0,true);
+
+
+
+    Mat alphaimage;
+    cvtColor(src,alphaimage,CV_BGR2BGRA);
     Point2f cent;
-    cent.x = lineImage.cols/2;
-    cent.y = lineImage.rows/2;
-    Mat RotMx = getRotationMatrix2D(cent,int(-orientation),1);
-    warpAffine(lineImage,lineImage,RotMx, lineImage.size());
-
-
-    Mat invert = Mat::ones(src.size(), CV_8UC3);
+    Mat RotMx;
+    // Segmenting the alpha imgage:
+    Mat invert = Mat::ones(src.size(), CV_8UC3); // invert for rotation to work correctly
     bitwise_not ( src, invert );
-
     cent.x = invert.cols/2;
     cent.y = invert.rows/2;
     RotMx = getRotationMatrix2D(cent,int(-orientation),1);
-
     warpAffine(invert,invert,RotMx, invert.size());
-    // find significant lines, then find right angles between these lines (corners)
-    //imshow("rotated",src);
-    //waitKey(0);
-
     cent.x = segmented.cols/2;
     cent.y = segmented.rows/2;
     RotMx = getRotationMatrix2D(cent,int(-orientation),1);
     warpAffine(segmented,segmented,RotMx, segmented.size());
-    imshow("seg", segmented);
-    // imshow("rotated", src);
-    // waitKey(0);
-    bitwise_not(invert,invert);
+   // imshow("seg", segmented);
+    bitwise_not(invert,invert); // invert again after rotating
     Mat alphImage;
     cvtColor(invert,alphImage,CV_BGR2BGRA);
 
+    // create alpha image:
     for(size_t i = 0; i< alphImage.rows;i++){
         for(size_t j = 0; j< alphImage.cols; j++){
             if(segmented.at<uchar>(i,j) ==0){
@@ -814,18 +848,26 @@ Mat correct(Mat src) {
                 uchar green = intensity.val[1];
                 uchar red = intensity.val[2];
                 intensity.val[3] = 0;
-
                 alphImage.at<Vec4b>(i,j) = intensity; // alpha channel set to zero
             }
 
         }
     }
 
+    //imwrite("../solution/alpha.png", alphImage);
+   // fprintf(stdout, "Saved PNG file with alpha data.\n");
 
-    imwrite("../solution/alpha.png", alphImage);
-    fprintf(stdout, "Saved PNG file with alpha data.\n");
+    if(with_alpha){
+        return alphImage;
+    }
+    else{
+        cent.x = invert.cols/2;
+        cent.y = invert.rows/2;
+        RotMx = getRotationMatrix2D(cent,int(-orientation),1);
+        warpAffine(returnBW,returnBW,RotMx, returnBW.size());
+        return returnBW;
+    }
 
-    return invert;
 
 }
 
