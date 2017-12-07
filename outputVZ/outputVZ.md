@@ -1,0 +1,1 @@
+VZ output Black & White images

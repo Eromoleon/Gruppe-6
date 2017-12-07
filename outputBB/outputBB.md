@@ -1,0 +1,1 @@
+BB output Black & White images

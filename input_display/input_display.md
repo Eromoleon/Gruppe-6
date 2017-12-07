@@ -1,0 +1,1 @@
+Put here all the images that are used to draw the puzzle

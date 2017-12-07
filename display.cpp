@@ -160,7 +160,7 @@ int main(){
 Mat readImage(int fileIndex){
     // also crops the image to the outermost contour
     char inputFile [100];
-    sprintf(inputFile,"../test_puzzle/%d.jpg",fileIndex);
+    sprintf(inputFile,"../input_display/%d.jpg",fileIndex);
     Mat source = imread(inputFile,1);
 //    int padding = 30;
 //    copyMakeBorder(source, source, padding, padding, padding, padding, BORDER_CONSTANT, (0,0,0));
@@ -193,7 +193,7 @@ Mat readImage(int fileIndex){
 
 Mat resultImage( vector<vector< SolutionElement>> solutionMx ){
 
-    int Y_size = 850;
+    int Y_size = 600; // chose this to fit your monitor!
     int separator = 1;
     int partHeight = 90;
     int partWidth;
